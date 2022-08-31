@@ -1,66 +1,73 @@
+import os
 import re
 
-import requests
+
+import pandas as pd
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 
-s = requests.Session()
-s.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/102.0.5005.167 YaBrowser/22.7.4.957 Yowser/2.5 Safari/537.36 '
-})
-
-
-def load_restaurant_data(session):
-    url = 'https://www.kfc.ru/restaurants'
-    request = session.get(url)
-    return request.text
+filename = './restaurant_data/restaurants.html'
+url = 'https://www.kfc.ru/restaurants'
 
 
-def contain_restaurant_data(text):
-    soup = BeautifulSoup(text)
-    restaurant_list = soup.find('div', {'class': '_1JEleOn1UX'})
-    return restaurant_list is not None
-
-
-page = 1
-while True:
-    data = load_restaurant_data(s)
-    if contain_restaurant_data(data):
-        with open('./page_%d.html' % page, 'w') as output_file:
-            output_file.write(data.encode('cp1251'))
-            page += 1
-    else:
-        break
-
-
-def read_file(filename):
-    with open(filename) as input_file:
-        text = input_file.read()
-    return text
-
-
-def parse_user_datafile_bs(filename):
-    results = []
-    text = read_file(filename)
-
-    soup = BeautifulSoup(text)
-    restaurant_list = soup.find('div', {'class': '_1JEleOn1UX'})
-    items = restaurant_list.find_all('div', {'class': ['_1iEaYvElzW']})
+def parse_restaurant_datafile_bs(filename):
+    data = []
+    driver = webdriver.Chrome()
+    wait = WebDriverWait(driver, 10)
+    driver.get(url)
+    button = wait.until(EC.element_to_be_clickable(
+        (By.XPATH,
+         '//*[@id="root"]/div/div[2]/div/div[2]/div[2]/button[2]')))
+    button.click()
+    search_box = driver.find_element(
+        By.XPATH,
+        '//*[@id="root"]/div/div[2]/div/div[2]/div[1]/div/form/input')
+    search_box.send_keys("москва")
+    html = driver.page_source
+    soup = BeautifulSoup(html, features='lxml')
+    restaurant_list = soup.find('div', attrs={'class': '_1JEleOn1UX'})
+    items = restaurant_list.find_all('div', attrs={'class': '_1iEaYvElzW'})
     for item in items:
         # getting name and franchise
-        name = item.find('div', {'class': '_1p8oADYhWg t-xl mb-24 condensed'}).text
-        franchise = re.findall('\w+', name)[0]
+        name = item.find(
+            'div',
+            {'class': '_1p8oADYhWg t-xl mb-24 condensed'}).text
+        franchise = re.findall(r'\w+', name)[0]
         # getting city and address
-        address = item.find('div', {'class': '_32rXCPXxSH t-m-sm mt-8'}).text
-        city = re.findall('\w+', name)[0]
+        address = item.find(
+            'div',
+            {'class': '_32rXCPXxSH t-m-sm mt-8'}).text
+        city = re.findall(r'\w+', address)[0]
         # getting phone
-        phone = item.find('div', {'class': '_1Gj6uG1m9b t-m-sm mt-8'}).text
+        phone = item.find(
+            'div',
+            {'class': '_1Gj6uG1m9b t-m-sm mt-8'}).text
 
-        results.append({
+        data.append({
             'franchise': franchise,
             'name': name,
             'city': city,
             'address': address,
             'phone': phone,
         })
+    return data
+
+
+def load_data_to_directory():
+    results = []
+    for filename in os.listdir('./restaurant_data/'):
+        results.extend(parse_restaurant_datafile_bs(filename))
     return results
+
+
+def convert_data_kfc():
+    data = parse_restaurant_datafile_bs(filename)
+    data_restaurants_kfc_df = pd.DataFrame(data)
+    data_restaurants_kfc_df.to_csv('kfc_restaurants', encoding='utf-8')
+
+
+load_data_to_directory()
+convert_data_kfc()

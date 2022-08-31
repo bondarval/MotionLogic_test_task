@@ -7,4 +7,3 @@ class Restaurant(models.Model):
     city = models.CharField(max_length=100)
     address = models.TextField()
     phone = models.CharField(max_length=50)
-    is_operational = models.BooleanField(default=True)
