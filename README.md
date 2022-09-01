@@ -6,10 +6,11 @@
 ## Используемые технологии
  - Python 3.9
  - Django 4.1
- - Pandas 1.4.3
+ - Pandas 
  - REST Framework 3.13.1
  - CORS headers 3.13
  - Gunicorn 20.0.4
+ - Selenium
  - PostgreSQL 12.2
  - Docker 20.10.2
  - подробнее см. прилагаемый файл зависимостей requrements.txt
@@ -23,7 +24,54 @@
  - DB_PORT=5432
  - SECRET_KEY=<секретный ключ проекта django>
 ### Инструкции для развертывания и запуска приложения
+В папке infra содержатся натсройки, необходимые как для локального(тестового) развертывания проекта, так и для развертывания непосредственно на сервере
 для Linux-систем все команды необходимо выполнять от имени администратора
+1. Для локального развеертывания необходимо:
+- Склонировать репозиторий
+```bash
+git clone https://github.com/bondarval/MotionLogic_test_task.git
+```
+- Установить docker:
+```bash
+apt install docker.io 
+```
+- Установить docker-compose:
+```bash
+curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -session)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+```
+- Установить и активировать виртуальное окружение
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+- Установить зависимости
+```bash
+pip install -r requirements.txt  
+```
+- Перейти в папку infra и запустить файл docker-compose.dev.yml
+```bash
+docker-compose -f docker-compose.dev.yml up  
+```
+- Выполнить миграции, собрать статику проекта
+```bash
+python manage.py makemigrations
+python manage.py migrate --no-input
+python manage.py collectstatic 
+```
+- Запустить сервер разработчика
+```bash
+python manage.py runserver  
+```
+- Создать суперпользователя Django (если необходимо), после запроса от терминала ввести логин и пароль для суперпользователя:
+```bash
+python manage.py createsuperuser
+```
+- Загрузить в базу прилагаемые данные в формате .csv (необязательно)
+```bash
+python manage.py read_data_from_csv
+```
+2.Для развертывания на сервере необходимо: 
 - Склонировать репозиторий
 ```bash
 git clone https://github.com/bondarval/MotionLogic_test_task.git
@@ -45,7 +93,7 @@ scp docker-compose.yml <username>@<host>:/home/<username>/docker-compose.yml
 scp nginx.conf <username>@<host>:/home/<username>/nginx.conf
 ```
 - Создать .env файл по предлагаемому выше шаблону. Обязательно изменить значения POSTGRES_USER и POSTGRES_PASSWORD
-- Для работы с Workflow добавить в Secrets GitHub переменные окружения для работы:
+- Если предполаагется создание Workflow, добавить в Secrets GitHub переменные окружения для работы:
     ```
     DB_ENGINE=<django.db.backends.postgresql>
     DB_NAME=<имя базы данных postgres>
@@ -67,11 +115,11 @@ scp nginx.conf <username>@<host>:/home/<username>/nginx.conf
     TELEGRAM_TO=<ID чата, в который придет сообщение>
     TELEGRAM_TOKEN=<токен вашего бота>
     ```
-    Workflow состоит из четырёх шагов:
+    Workflow, согласно авторскому замыслу, состоит из следующих шагов:
      - Проверка кода на соответствие PEP8
      - Сборка и публикация образа бекенда на DockerHub.
      - Автоматический деплой на удаленный сервер.
-     - Отправка уведомления в телеграм-чат. 
+     - Отправка уведомления в телеграм-чат (может быть заменен или опущен по усмотрению использующего). 
 - Собрать и запустить контейнеры на сервере:
 ```bash
 docker-compose up -d --build
@@ -85,18 +133,14 @@ docker-compose up -d --build
     ```bash
     docker-compose exec backend python manage.py collectstatic --no-input
     ```
-    * Загрузить в базу тестовые данные(необязательно):
-    ```bash
-    docker-compose exec backend python manage.py loaddata fixtures.json
-    ```
     * Создать суперпользователя Django (если необходимо), после запроса от терминала ввести логин и пароль для суперпользователя:
     ```bash
     docker-compose exec backend python manage.py createsuperuser
     ```
 ### Команды для заполнения базы данными
- - Загрузить в базу тестовые данные
+ - Загрузить в базу прилагаемые данные в формате .csv (необязательно)
 ```bash
-docker-compose exec backend python manage.py loaddata fixtures.json
+docker-compose exec backend python manage.py read_data_from_csv
 ```
  - При необходимости создать резервную копию данных, выполнить команду:
 ```bash
