@@ -9,11 +9,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-filename = './restaurant_data/restaurants.html'
 url = 'https://www.kfc.ru/restaurants'
 
 
-def parse_restaurant_datafile_bs(filename):
+def parse_restaurant_datafile_bs():
     data = []
     driver = webdriver.Chrome()
     wait = WebDriverWait(driver, 10)
@@ -31,17 +30,14 @@ def parse_restaurant_datafile_bs(filename):
     restaurant_list = soup.find('div', attrs={'class': '_1JEleOn1UX'})
     items = restaurant_list.find_all('div', attrs={'class': '_1iEaYvElzW'})
     for item in items:
-        # getting name and franchise
         name = item.find(
             'div',
             {'class': '_1p8oADYhWg t-xl mb-24 condensed'}).text
         franchise = re.findall(r'\w+', name)[0]
-        # getting city and address
         address = item.find(
             'div',
             {'class': '_32rXCPXxSH t-m-sm mt-8'}).text
         city = re.findall(r'\w+', address)[0]
-        # getting phone
         phone = item.find(
             'div',
             {'class': '_1Gj6uG1m9b t-m-sm mt-8'}).text
@@ -56,18 +52,10 @@ def parse_restaurant_datafile_bs(filename):
     return data
 
 
-def load_data_to_directory():
-    results = []
-    for filename in os.listdir('./restaurant_data/'):
-        results.extend(parse_restaurant_datafile_bs(filename))
-    return results
-
-
 def convert_data_kfc():
-    data = parse_restaurant_datafile_bs(filename)
+    data = parse_restaurant_datafile_bs()
     data_restaurants_kfc_df = pd.DataFrame(data)
     data_restaurants_kfc_df.to_csv('kfc_restaurants', encoding='utf-8')
 
 
-load_data_to_directory()
 convert_data_kfc()
